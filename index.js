@@ -605,16 +605,23 @@ RedisClient.prototype.connection_gone = function (why, error) {
         }
         this.retry_delay = this.options.retry_strategy(retry_params);
         if (typeof this.retry_delay !== 'number') {
+            var message = 'Stream connection ended and command aborted.';
             // Pass individual error through
             if (this.retry_delay instanceof Error) {
                 error = this.retry_delay;
             }
             this.flush_and_error({
-                message: 'Stream connection ended and command aborted.',
+                message: message,
                 code: 'NR_CLOSED'
             }, {
                 error: error
             });
+            var err = new Error(message);
+            err.code = 'CONNECTION_BROKEN';
+            if (error) {
+                err.origin = error;
+            }
+            this.emit('error', err);
             this.end(false);
             return;
         }
